@@ -27,6 +27,10 @@ Notes inside a tuple just get the tuple around it removed. Pray that you only ha
 > The `<time-modification>` element and its children must be removed.
 > The `<notations><tuplet>` element must be removed.
 
-**NOTE:** This program does not convert dotted notes properly. They should be manually converted to tied notes before conversion.
-
 Ties, and other score elements can stay.
+
+## Caveats
+
+This program does not convert dotted notes properly. They should be manually converted to tied notes before conversion.
+
+Tempo must be an integer to be converted properly.

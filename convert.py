@@ -8,59 +8,80 @@ with open(out_file, 'w') as output:
         # whether or not we are currently in a note object
         in_note = False
         
-        # whether or not this note was a tuple
-        is_tuple = False
-        
         # whether we are currently inside a time modification tag
         time_modification = False
         
+        # the pre-existing dot or accidental info. because xml is annoying.
+        note_info = ''
+        
         for line in input:
-            # open a note when we see a type tag
-            if '<type>' in line:
-                in_note = True
-                is_tuple = False
-            
-            # close a note when we see a stem tag
-            elif '<stem>' in line:
-                # if this wasn't a tuple, we need to add the dot
-                if not is_tuple:
-                    output.write('<dot/>')
-                in_note = False
-                
-            # if this next tag is a tuple tag
-            elif '<tuple' in line:
-                continue # don't print this line
-            
-            # if we are in a note, let's check some stuff
-            elif in_note:
-                
-                # time-modification tag indicates a tuple
-                if '<time-modification>' in line:
-                    time_modification = True
-                    is_tuple = True
-                    continue # don't print this line
-                    
-                # if we are closing the time-modification
-                elif '</time-modification>' in line:
-                    time_modification = False
-                    continue  # don't print this line
-                
-                # if we are inside a time modification, don't print it
-                elif time_modification:
-                    continue # don't print this line
-            
             # change the time signature
-            elif '<beats>' in line:
-                output.write('<beats>12</beats>')
-                continue
+            if '<beats>' in line:
+                output.write('<beats>12</beats>\n')
             elif '<beat-type>' in line:
-                output.write('<beat-type>8</beat-type>')
-                continue
+                output.write('<beat-type>8</beat-type>\n')
                 
             # change the divisions
             elif '<divisions>' in line:
                 divs = int(int(''.join(filter(str.isdigit, line))) * 2 / 3)
-                output.write('<divisions>{divs}</divisions>'.format(divs = divs))
+                output.write('<divisions>{divs}</divisions>\n'.format(divs = divs))
+            
+            # change the tempo indicator to dotted quarter notes
+            elif '<beat-unit>' in line:
+                output.write(line)
+                output.write('<beat-unit-dot/>\n')
+                
+            # adjust the tempo
+            elif '<sound tempo' in line:
+                # pls don't give a decimal tempo originally or else it will break
+                tempo = int(''.join(filter(str.isdigit, line))) * 3 / 2
+                output.write('<sound tempo="{tempo}"/>\n'.format(tempo = tempo))
+            
+            # open a note when we see a type tag
+            elif '<type>' in line:
+                in_note = True
+                output.write(line)
                 continue
-                        
-            output.write(line)
+            
+            # if the last tag we saw was the type tag
+            elif in_note:
+                # there is already a dot on the note
+                if '<dot/>' in line:
+                    # should probably do smth special w this case but i'm lazy
+                    note_info += line
+                
+                # if there is an accidental on the note
+                elif '<accidental>' in line:
+                    note_info += line
+            
+                # time-modification tag indicates a tuple
+                elif '<time-modification>' in line:
+                    time_modification = True
+                
+                # if we are closing the time-modification
+                elif '</time-modification>' in line:
+                    time_modification = False
+                    output.write(note_info)
+                    note_info = ''
+                    in_note = False
+                
+                # don't print anything inside a time modification
+                elif time_modification:
+                    pass
+                
+                # we never saw a time modification so it wasn't a tuplet
+                # let's add the dot and missing content
+                else:
+                    output.write('<dot/>\n')
+                    output.write(note_info)
+                    note_info = ''
+                    in_note = False
+                    output.write(line)
+            
+            # if this next tag is a tuple tag
+            elif '<tuple' in line:
+                pass
+
+            # if it didn't match a case above, print the line
+            else:          
+                output.write(line)
